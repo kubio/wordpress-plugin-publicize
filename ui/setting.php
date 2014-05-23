@@ -16,7 +16,7 @@ class Publicize_UI_Setting {
 		<form method="post" action="options-general.php?page=pbcz_setting">
 			<?php
 				wp_nonce_field('update-options');
-				$keys = array('fb_page_select', 'fb_selected_token', 'tw_select', 'tw_token', 'post_message');
+				$keys = array(FB_SELECT_PAGE, FB_SELECT_PAGE_TOKEN, TW_TOKEN, 'post_message');
 				if ( isset($_POST['action']) && $_POST['action'] === 'update') {
 					foreach ($keys as $key) {
 						$option = get_option($key);
@@ -24,31 +24,53 @@ class Publicize_UI_Setting {
 							add_option($key, $_POST[$key]);
 						}else if( isset($_POST[$key]) && $_POST[$key] !== $option ){
 							update_option($key, $_POST[$key]);
-						}else if( !isset($_POST[$key]) || empty($_POST[$key]) ){
-							delete_option($key);
 						}
 					}
 				}
+				if( get_option(FB_PAGE_LIST) != false && isset($_REQUEST['fb_delete']) && $_REQUEST['fb_delete'] == '9999' ){
+					delete_option(FB_USER);
+					delete_option(FB_PAGE_LIST);
+					delete_option(FB_SELECT_PAGE);
+					delete_option(FB_SELECT_PAGE_TOKEN);
+				}
+				if( get_option(TW_TOKEN) !== false && isset($_REQUEST['tw_delete']) && $_REQUEST['tw_delete'] == '9999' ){
+					delete_option(TW_TOKEN);
+					delete_option(TW_TOKEN_SECRET);
+				}
+
+				$fb_authorize = Facebook_Util::authorize();
 			?>
 
 			<section class="fb_auth">
 				<h2>Facebookアカウント設定</h2>
-				<?php if(Facebook_Util::authorize()): $page_list = Facebook_Util::get_page_list(); $html='';?>
-				<div class="fb_auth_complete">
-					<select id="fb_page_select" name="fb_page_select">
-					<?php foreach($page_list['data'] as $key=>$page): $html .= '<input type="hidden" id="fb_'.$page['id'].'" value="'.$page['access_token'].'">'?>
-						<option value="<?php echo $page['id'] ?>" <?php echo (get_option('fb_page_select') === $page['id']) ? 'selected' : '' ?>><?php echo $page['name'] ?></option>
-					<?php endforeach; ?>
-					</select>
-					<?php echo $html; ?>
-					<input type="hidden" name="fb_selected_token" id="fb_selected_token" value="<?php echo get_option('fb_selected_token'); ?>"/>
-					<!-- <button class="button-secondary">このアカウントに投稿する</button> -->
-				</div>
-				<?php else: ?>
-				<div class="fb_no_auth">
-					<a href="<?php echo Facebook_Util::get_oauth_url(); ?>" class="button-secondary">Facebookと連携する</a>
-				</div>
+				<?php if($fb_authorize === false): ?>
+					<div class="fb_no_auth">
+						<a href="<?php echo Facebook_Util::get_oauth_url(); ?>" class="button-secondary">Facebookと連携する</a>
+					</div> 
+
+				<?php elseif($fb_authorize === 'other'): $user = json_decode(get_option(FB_USER), true);?>
+					<div class="fb_auth_complete">
+						<span><?php echo $user['name']; ?></span>さんが認証しています。<span><?php echo $user['name']; ?></span>さんへお問い合わせください。
+						<a href="options-general.php?page=pbcz_setting&fb_delete=9999" class="button-secondary" onclick="return confirm('アプリ連携を解除しても宜しいですか？');">連携解除</a>
+					</div>
+
+				<?php elseif($fb_authorize === 'self'):
+					$page_list = Facebook_Util::get_pages();
+					$current_page_id = get_option(FB_SELECT_PAGE);
+					$token = get_option(FB_SELECT_PAGE_TOKEN);
+					$html='';?>
+					<div class="fb_auth_complete">
+						<select id="<?php echo FB_SELECT_PAGE; ?>" name="<?php echo FB_SELECT_PAGE; ?>">
+						<?php foreach($page_list['data'] as $key=>$page): $html .= '<input type="hidden" id="fb_'.$page['id'].'" value="'.$page['access_token'].'">'?>
+							<option value="<?php echo $page['id'] ?>" <?php echo ( $current_page_id === $page['id']) ? 'selected' : '' ?>><?php echo $page['name'] ?></option>
+						<?php endforeach; ?>
+						</select>
+						<?php echo $html; ?>
+						<a href="options-general.php?page=pbcz_setting&fb_delete=9999" class="button-secondary" onclick="return confirm('アプリ連携を解除しても宜しいですか？');">連携解除</a>
+						<input type="hidden" name="<?php echo FB_SELECT_PAGE_TOKEN; ?>" id="<?php echo FB_SELECT_PAGE_TOKEN; ?>" value="<?php echo ($token != false)? $token : $page_list['data'][0]['access_token'] ?>"/>
+					</div>
 				<?php endif; ?>
+				
 			</section>
 
 
@@ -56,7 +78,7 @@ class Publicize_UI_Setting {
 				<h2>Twitterアカウント設定</h2>
 				<?php if(Twitter_Util::authorize()):?>
 				<div class="tw_auth_complete">
-				認証済み
+				<p>認証済み</p><a href="options-general.php?page=pbcz_setting&tw_delete=9999" class="button-secondary" onclick="return confirm('アプリ連携を解除しても宜しいですか？');">連携解除</a>
 				</div>
 				<?php else: ?>
 				<div class="tw_no_auth">
@@ -67,7 +89,7 @@ class Publicize_UI_Setting {
 
 			<section class="post_message">
 				<h2>投稿メッセージ</h2>
-				<textarea name="post_message" style="margin: 2px; width: 388px; height: 136px;"><?php echo get_option('post_message',''); ?></textarea>
+				<textarea name="post_message" style="margin: 2px; width: 388px; height: 136px;"><?php echo get_option('post_message','%%title%%が投稿されました。 %%link%%'); ?></textarea>
 			</section>
 
 			<p class="submit">
@@ -75,6 +97,13 @@ class Publicize_UI_Setting {
 				<input type="submit" name="Submit" class="button-primary" value="変更を保存" />
 			</p>
 		</form>
+		<script>
+		jQuery('#<?php echo FB_SELECT_PAGE; ?>').change(function(){
+			jQuery('#<?php echo FB_SELECT_PAGE_TOKEN; ?>').val(
+				jQuery('#fb_'+jQuery(this).val()).val()
+			);
+		});
+		</script>
 		<?php
 	}
 
