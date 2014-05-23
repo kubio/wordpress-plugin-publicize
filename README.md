@@ -1,6 +1,11 @@
 #wordpress-plugin-publicize
 ==========================
 
+Wordpressでの記事投稿時に、Twitter,Facebookへも同時に投稿するためのプラグインです。
+
+==========================
+#Uses
+
 ###1. Wordpressのpluginディレクトリへ設置
 ```
 $ cd [PLUGIN_DIR]
