@@ -1,6 +1,0 @@
-{
-    "require": {
-        "facebook/php-sdk": "dev-master",
-        "abraham/twitteroauth": "dev-master"
-    }
-}
