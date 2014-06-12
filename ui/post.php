@@ -79,10 +79,10 @@ class Publicize_UI_Post {
 		}
 
 		if($isPublish) {
-				if( isset($_POST['post_message']) && isset($_POST['select_twitter']) && isset($_POST['select_facebook'])){
+				if( isset($_POST['post_message']) && ( isset($_POST['select_twitter']) || isset($_POST['select_facebook'] ))){
 			    $message = $_POST['post_message'];
-					$isFacebook = $_POST['select_facebook'];
-					$isTwitter = $_POST['select_twitter'];
+					$isFacebook = isset($_POST['select_facebook']) ? $_POST['select_facebook'] : false;
+					$isTwitter = isset($_POST['select_twitter']) ? $_POST['select_twitter'] : false;
 				}else{
 					$message = get_post_meta($post->ID, 'post_message', true);
 					$isFacebook = get_post_meta($post->ID, 'select_facebook', true);
